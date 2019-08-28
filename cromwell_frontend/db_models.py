@@ -79,7 +79,7 @@ class User(db.Model, UserMixin):
 
     @property
     def admin(self):
-        return self.username in grp.getgrnam('admin').gr_mem or self.username in grp.getgrnam('sudo').gr_mem
+        return any([self.username in group.gr_mem for group in config.ADMIN_GROUPS])
 
     def to_dict(self):
         return {

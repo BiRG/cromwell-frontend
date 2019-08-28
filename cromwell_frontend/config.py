@@ -14,7 +14,7 @@
 import os
 from pathlib import Path
 import grp
-from typing import Optional
+from typing import Optional, List
 
 HOST_IP: str = '0.0.0.0'  # 0.0.0.0 to broadcast publicly, 127.0.0.1 for loopback (this machine only)
 CROMWELL_URL: str = 'http://localhost:8000'  # address where the Cromwell API can be reached.
@@ -26,7 +26,8 @@ LOG_FILE: Path = (Path(__file__).parent.parent / 'error.log').resolve()
 WOMTOOL_JAR: str = '/usr/local/bin/womtool-45.jar'
 CODEMIRROR_THEME_CSS: str = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.48.4/theme/idea.min.css'  # you can also always select 'default'
 CODEMIRROR_THEME_NAME: str = 'default'
-AUTHORIZED_GROUP: Optional[grp.struct_group] = None  # PAM group users must be in to use this service.
+AUTHORIZED_GROUPS: Optional[grp.struct_group] = None  # PAM groups users must be in at least one of to use this service.
+ADMIN_GROUPS: Optional[List[grp.struct_group]] = [grp.getgrnam('admin'), grp.getgrnam('sudo')]
 DB_URI: str = 'postgresql+psycopg2://cromwell:7u8oqadixrxmIhfgKWXDTDPz0AJVxCJX@localhost:5432/cromwell_frontend'
 
 # Overwrite options above if environment variable exists
@@ -41,5 +42,6 @@ LOG_FILE = Path(os.environ['LOG_FILE']) if 'LOG_FILE' in os.environ else LOG_FIL
 WOMTOOL_JAR = os.environ['WOMTOOL_JAR'] if 'WOMTOOL_JAR' in os.environ else WOMTOOL_JAR
 CODEMIRROR_THEME_CSS = os.environ['CODEMIRROR_THEME_CSS'] if 'CODEMIRROR_THEME_CSS' in os.environ else CODEMIRROR_THEME_CSS
 CODEMIRROR_THEME_NAME = os.environ['CODEMIRROR_THEME_NAME'] if 'CODEMIRROR_THEME_NAME' in os.environ else CODEMIRROR_THEME_NAME
-AUTHORIZED_GROUP = grp.getgrnam(os.environ['AUTHORIZED_GROUP']) if 'AUTHORIZED_GROUP' in os.environ else AUTHORIZED_GROUP
+AUTHORIZED_GROUPS = [grp.getgrnam(group) for group in os.environ['AUTHORIZED_GROUPS'].split(',')] if 'AUTHORIZED_GROUPS' in os.environ else AUTHORIZED_GROUPS
+ADMIN_GROUPS = [grp.getgrnam(group) for group in os.environ['ADMIN_GROUPS'].split(',')] if 'ADMIN_GROUPS' in os.environ else AUTHORIZED_GROUPS
 DB_URI = os.environ['DB_URI'] if 'DB_URI' in os.environ else DB_URI

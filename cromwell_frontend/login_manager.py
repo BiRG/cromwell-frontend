@@ -16,11 +16,11 @@ login_manager.blueprint_login_views = {
 
 @login_manager.user_loader
 def user_loader(user_id):
-    user = User.query.filter_by(id = user_id).first()
+    user = User.query.filter_by(id=user_id).first()
     if user is None:
         try:
             pwd.getpwnam(user.username)
-            if config.AUTHORIZED_GROUP is not None and user_id not in config.AUTHORIZED_GROUP.gr_mem:
+            if config.AUTHORIZED_GROUPS is not None and not any([user_id in group.gr_mem for group in config.AUTHORIZED_GROUPS]):
                 return
         except AttributeError:
             return
