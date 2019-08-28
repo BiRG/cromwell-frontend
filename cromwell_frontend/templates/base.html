@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    {% block styles %}
+    <link href="{{ BOOTSTRAP_CSS_URL }}" rel="stylesheet" type="text/css">
+    <link href="https://cdn.jsdelivr.net/npm/simple-datatables@latest/dist/style.css" rel="stylesheet" type="text/css">
+    {% endblock %}
+    <title>{{ page_data.title }}</title>
+</head>
+<body>
+{% block navbar %}
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+  <a class="navbar-brand" href="{{ url_for('home') }}">Cromwell Frontend @ {{ BRAND }}</a>
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+  <div class="collapse navbar-collapse" id="navbarNav">
+    <ul class="navbar-nav d-flex mx-auto">
+      <li class="nav-item dropdown">
+        <a id="workflowDropdown" class="nav-link dropdown-toggle h6" href="#" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Workflows</a>
+        <div class="dropdown-menu" aria-labelledby="workflowDropdown">
+          <a class="dropdown-item" href="{{ url_for('workflows.list_workflows') }}">List</a>
+          <a class="dropdown-item" href="{{ url_for('workflows.submit_workflow') }}">Submit</a>
+        </div>
+      </li>
+      <li class="nav-item dropdown">
+        <a id="definitionDropdown" class="nav-link dropdown-toggle h6" href="#" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Workflow Definitions</a>
+        <div class="dropdown-menu" aria-labelledby="definitionDropdown">
+          <a class="dropdown-item" href="{{ url_for('workflow_definitions.list_workflow_definitions') }}">List</a>
+          <a class="dropdown-item" href="{{ url_for('workflow_definitions.create_workflow_definition') }}">Create</a>
+        </div>
+      </li>
+    </ul>
+    <ul class="navbar-nav d-flex mr-auto">
+      <li class="nav-item dropdown">
+        <a id="profileDropdown" class="nav-link dropdown-toggle h6" href="#" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ current_user.username }}</a>
+        <div class="dropdown-menu" aria-labelledby="profileDropdown">
+          <a class="dropdown-item" href="{{ url_for('logout') }}">Logout</a>
+        </div>
+      </li>
+    </ul>
+  </div>
+</nav>
+{% endblock %}
+<div id="content" class="container">
+  <br>
+  {% block headline %}
+  <h2>{{ page_data.title }}</h2>
+  {% endblock %}
+    {% block content %}
+    {%- endblock %}
+</div>
+{% block footer %}
+<br>
+<footer class="footer">
+  <hr>
+  <p class="text-center text-muted">
+    Copyright 2019 <a href="https://birg.cs.wright.edu">BiRG</a> @ <a href="https://wright.edu">Wright State University</a>. Written by <a href="https://github.com/dpfoose">Dan Foose</a>.
+  </p>
+</footer>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js" integrity="sha384-xrRywqdh3PHs8keKZN+8zzc5TX0GRTLCcmivcbNJWm2rs5C8PRhcEn3czEjhAO9o" crossorigin="anonymous"></script>
+{% endblock %}
+</body>
+</html>

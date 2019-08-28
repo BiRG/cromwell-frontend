@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block styles %}
+{{ super() }}
+<link rel=stylesheet href=https://cdn.jsdelivr.net/npm/simple-datatables@2.1/dist/style.css>
+{% endblock %}
+{% block content %}
+{{ super() }}
+<table id="listTable" class="table-striped table-bordered" cellspacing="0" width="auto">
+    <thead>
+      <tr>
+        <th>Relative Filename</th>
+        <th>Name</th>
+        <th>Description</th>
+        <th>Owner</th>
+        <th>Created On</th>
+        <th>Updated On</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for workflow_definition in page_data.workflow_definitions %}
+    <tr>
+      <td>{{ workflow_definition.relative_filename }}</td>
+        <td><a href="{{ url_for('workflow_definitions.view_workflow_definition', relative_path=workflow_definition.relative_filename) }}">{{ workflow_definition.name }}</a></td>
+      <td>{{ workflow_definition.description }}</td>
+      <td>{{ workflow_definition.owner_id }}</td>
+      <td data-order="{{ workflow_definition.created_on.timestamp() }}">{{ workflow_definition.created_on | datetime }}</td>
+      <td data-order="{{ workflow_definition.updated_on.timestamp() }}">{{ workflow_definition.updated_on | datetime }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
+{% block scripts %}
+{{ super() }}
+<script src=https://cdn.jsdelivr.net/npm/simple-datatables@latest></script>
+<script>
+    const dataTable = new simpleDatatables.DataTable('#listTable');
+</script>
+{% endblock %}

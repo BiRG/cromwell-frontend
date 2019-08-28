@@ -1,0 +1,364 @@
+{% extends 'base.html' %}
+{% macro get_badge(workflow) %}
+{% if (workflow.status is none) or (workflow.status=='Submitted') %}
+<span class="badge badge-pill badge-info">Submitted</span>
+{% elif workflow.status=='Succeeded' %}
+<span class="badge badge-pill badge-success">Succeeded</span>
+{% elif workflow.status=='Failed' %}
+<span class="badge badge-pill badge-danger">Failed</span>
+{% elif workflow.status=='Running' %}
+<span class="badge badge-pill badge-primary">Running</span>
+{% else %}
+<span class="badge badge-pill badge-secondary">{{ workflow.status }}</span>
+{% endif %}
+{% endmacro %}
+
+{% block headline %}
+<h2>{{ page_data.title }} {{ get_badge(page_data.workflow) }}</h2>
+{% endblock %}
+{% block content %}
+{{ super() }}
+<div class="modal fade" id="cancelModal" tabindex="-1" role="dialog" aria-labelledby="cancelModalLabel"
+   aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="cancelModalLabel">Confirm Cancel</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true"><i class="far fa-window-close"></i></span>
+        </button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to cancel this job?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-danger" onclick="cancelJob();">Cancel Job</button>
+      </div>
+    </div>
+  </div>
+</div>
+<ul class="nav nav-tabs" id="tabs" role="tablist">
+  <li class="nav-item">
+    <a class="nav-link active" id="attribute-tab" data-toggle="tab" href="#attribute-tab-pane" role="tab" aria-controls="attribute-tab-pane" aria-selected="true">Attributes</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="job-chart-tab" data-toggle="tab" href="#job-chart-tab-pane" role="tab" aria-controls="job-chart-tab-pane" aria-selected="false">Progress</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="job-log-tab" data-toggle="tab" href="#job-log-tab-pane" role="tab" aria-controls="job-log-tab-pane" aria-selected="false">Logs</a>
+  </li>
+</ul>
+<div class="tab-content" id="tab-content">
+  <div class="tab-pane fade show active" id="attribute-tab-pane" role="tabpanel" aria-labelledby="attribute-tab">
+    <div class="card w-100">
+      <div class="card-body">
+        <table id="attributeTable" class="table table-striped table-bordered" cellspacing="0" width="auto">
+          <thead>
+          <tr>
+            <th>Name</th>
+            <th>Value</th>
+          </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>ID</td>
+              <td>{{ page_data.workflow.id }}</td>
+            </tr>
+            <tr>
+              <td>Status</td>
+              <td>{{ page_data.workflow.status }}</td>
+            </tr>
+            <tr>
+              <td>Submitted</td>
+              <td>{{ page_data.workflow.submission | datetime }}</td>
+            </tr>
+            <tr>
+              <td>Started</td>
+              <td>{{ page_data.workflow.start | datetime }}</td>
+            </tr>
+            <tr>
+              <td>Ended</td>
+              <td>{{ page_data.workflow.end | datetime }}</td>
+            </tr>
+            <tr>
+              <td>Submitted By</td>
+              <td>{{ page_data.workflow.owner_id }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="tab-pane fade" id="job-chart-tab-pane" role="tabpanel" aria-labelledby="job-chart-tab">
+    <div class="card w-100">
+      <div class="card-body">
+        <div class="row mb-4">
+          <button class="btn btn-success" onclick="drawChart();"><i class="fas fa-sync"></i> Refresh</button>
+        </div>
+        <div id="chart_div" class="row" style="height: 350px;"></div>
+        <div class="row">
+          {% if page_data.workflow.status in ['On Hold', 'Submitted', 'Running'] %}
+          <button type="button" class="btn btn-danger" data-target="#cancelModal" data-toggle="modal">Cancel Job</button>
+          {% endif %}
+          {% if page_data.workflow.status=='On Hold' %}
+          <button type="button" class="btn btn-success" onclick="releaseHold();">Release Hold</button>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+    <div class="tab-pane fade" id="job-log-tab-pane" role="tabpanel" aria-labelledby="job-log-tab">
+      <div class="card w-100">
+        <div class="card-body">
+          <div id="log-accordion">
+            {% for log_id, log_text in page_data.workflow.get_flattened_logs().items() %}
+            <div class="card">
+              <div class="card-header" id="{{ log_id | make_valid_tag }}-heading">
+                  <h5 class="mb-0">
+                      <button class="btn btn-link collapsed" data-toggle="collapse"
+                              data-target="#{{ log_id | make_valid_tag }}" aria-expanded="false"
+                              aria-controls="{{ log_id | make_valid_tag }}">
+                          {{ log_id }}
+                      </button>
+                  </h5>
+              </div>
+
+              <div id="{{ log_id | make_valid_tag }}" class="collapse"
+                 aria-labelledby="{{ log_id | make_valid_tag }}-heading" data-parent="#log-accordion">
+                <div class="card-body">
+                  <pre>
+                    <code>
+{{ log_text }}
+                    </code>
+                  </pre>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    function cancelJob() {
+        fetch('{{ page_data.workflow.abort_url }}',
+            {
+                method: 'POST',
+                credentials: 'same-origin'
+            }).then(res => res.json()).then(data => {
+            console.log(data);
+            location.reload();
+        });
+    }
+
+    function releaseHold() {
+        fetch('{{ page_data.workflow.release_hold_url }}',
+            {
+                method: 'POST',
+                credentials: 'same-origin'
+            }).then(res => res.json()).then(data => {
+            console.log(data);
+            location.reload();
+        });
+    }
+</script>
+<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+<script type="text/javascript">
+    var parentWorkflowNames = [];
+    var expandedParentWorkflows = [];
+    var chartView;
+    google.charts.load('current', {packages: ['timeline']});
+    google.charts.setOnLoadCallback(drawChart);
+    function addDataTableRow(dataTable, callName, callPartName, startDate, endDate, ancestry) {
+        if (startDate <= endDate) {
+            newRow = dataTable.addRow([callName, callPartName, startDate, endDate]);
+            dataTable.setRowProperty(newRow, "ancestry", ancestry);
+        } else {
+            console.error("Unable to add '" + callName + "'s entry: '" + callPartName + "' because start-time '" + startDate + "'' is greater than end-time '" + endDate + "'");
+        }
+    }
+    function parseMetadata(data, dataTable, ancestry) {
+        var workflowName = data.workflowName;
+        var workflowEnd = null;
+        if (data.hasOwnProperty("end")) {
+            workflowEnd = new Date(data.end);
+        }
+        var executionCallsCount = 0;
+        var callsList = data.calls;
+        var sortable = [];
+        for (var key in callsList) {
+            sortable.push([key, callsList[key]]);
+        }
+        sortable.sort(function(a,b) {
+            return new Date(a[1][0].start) - new Date(b[1][0].start);
+        });
+        for(var sortableIndex in sortable)
+        {
+            var callName = sortable[sortableIndex][0];
+            var callList = sortable[sortableIndex][1];
+            for (var callIndex in callList)
+            {
+                var index = callList[callIndex]["shardIndex"];
+                var attempt = callList[callIndex]["attempt"];
+                var callStatus = callList[callIndex].executionStatus;
+                // add the index of the shard if there is one
+                var callLqn = (index == -1 ? callName : callName + "." + index);
+                // add the retry number, unless this was a successfuly first attempt (for brevity)
+                callLqn = ( callStatus == "Done" && attempt == 1 ? callLqn : callLqn + ".retry-" + attempt);
+                // Remove the workflow name
+                callLqn = callLqn.replace(new RegExp("^" + workflowName + "\\."), "");
+                var callFqn;
+                if (ancestry.length == 0) {
+                    callFqn = callLqn;
+                } else {
+                    callFqn = ancestry.join("/") + "/" + callLqn;
+                }
+                var executionEvents = callList[callIndex].executionEvents;
+                var firstEventStart = null;
+                var finalEventEnd = null;
+                if(callStatus == "Done" || callStatus == "Failed" || callStatus == "RetryableFailure") {
+                    executionCallsCount++;
+                    for (var executionEventIndex in executionEvents) {
+                        var executionEvent = callList[callIndex].executionEvents[executionEventIndex];
+                        var description = executionEvent["description"];
+                        // Replace all "start(...)" with just "start" so that the names (and therefore the "color" assigned from the list below) are consistent:
+                        description = description.replace(new RegExp("^start.*"), "start");
+                        var startDate = new Date(executionEvent["startTime"]);
+                        var endDate = new Date(executionEvent["endTime"]);
+                        if (firstEventStart == null || startDate < firstEventStart) {
+                            firstEventStart = startDate
+                        }
+                        if (finalEventEnd == null || endDate > finalEventEnd) {
+                            finalEventEnd = endDate
+                        }
+                        // NB: See the column definitions above.
+                        addDataTableRow(dataTable, callFqn, description, startDate, endDate, ancestry);
+                    }
+                    if (callList[callIndex].hasOwnProperty("start")) {
+                        var callStart = new Date(callList[callIndex].start);
+                    }
+                    else {
+                        var callStart = firstEventStart
+                    }
+                    if (callList[callIndex].hasOwnProperty("end")) {
+                        var callEnd = new Date(callList[callIndex].end);
+                    }
+                    else {
+                        var callStart = finalEventEnd
+                    }
+                    if (firstEventStart == null || finalEventEnd == null) {
+                        addDataTableRow(dataTable, callFqn, callList[callIndex].executionStatus, callStart, callEnd, ancestry);
+                    } else {
+                        if (callStart < firstEventStart) addDataTableRow(dataTable, callFqn, "cromwell starting overhead", callStart, firstEventStart, ancestry);
+                        if (callEnd > finalEventEnd) addDataTableRow(dataTable, callFqn, "cromwell final overhead", finalEventEnd, callEnd, ancestry);
+                    }
+                } else if (callList[callIndex].executionStatus == "Running" || callList[callIndex].executionStatus == "QueuedInCromwell" || callList[callIndex].executionStatus == "Starting") {
+                    var status = callList[callIndex].executionStatus;
+                    executionCallsCount++;
+                    var endDate = workflowEnd;
+                    if(endDate == null) {
+                        addDataTableRow(dataTable, callFqn, status, new Date(callList[callIndex].start), new Date(Date.now()), ancestry);
+                    }
+                    else {
+                        addDataTableRow(dataTable, callFqn, "Still ".concat(status).concat(" when workflow ended"), new Date(callList[callIndex].start), endDate, ancestry);
+                    }
+                }
+                if (callList[callIndex].hasOwnProperty("subWorkflowMetadata")) {
+                    var clone = ancestry.slice(0);
+                    clone.push(callLqn);
+                    parentWorkflowNames.push(callFqn);
+                    executionCallsCount += parseMetadata(callList[callIndex].subWorkflowMetadata, dataTable, clone);
+                }
+            }
+        }
+        return executionCallsCount;
+    }
+    function drawChart() {
+        fetch("{{ page_data.chart_url }}").then(res => res.json()).then(data => {
+            var dataTable = new google.visualization.DataTable();
+            dataTable.addColumn({ type: 'string', id: 'Position' });
+            dataTable.addColumn({ type: 'string', id: 'Name' });
+            dataTable.addColumn({ type: 'date', id: 'Start' });
+            dataTable.addColumn({ type: 'date', id: 'End' });
+            var executionCallsCount =  parseMetadata(data, dataTable, []);
+            var options = {
+                colors: ['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#a65628','#f781bf','#999999'],
+                timeline: {
+                    avoidOverlappingGridLines: false,
+                    showBarLabels: false,
+                    rowLabelStyle: {fontSize: 16, color: '#212529'},
+                    // Although bar labels are unshown, they still affect the height of each row. So make it small.
+                    barLabelStyle: {fontSize: 12, color: '#212529'}
+                },
+                tooltip: {isHtml: true}
+            };
+            var container = document.getElementById('chart_div');
+            var chart = new google.visualization.Timeline(container);
+            chartView = hideAllSubWorkflows(dataTable);
+            chart.draw(chartView, options);
+            google.visualization.events.addListener(chart, 'select', selectHandler);
+            function selectHandler(e) {
+                var selectedItem = chart.getSelection()[0];
+                if (selectedItem) {
+                    chartView = toggleSubWorkflowRows(dataTable, selectedItem.row);
+                    chart.draw(chartView, options);
+                    // For some reason the tooltip gets stuck and doesn't disappear by itself, so remove it explicitly from the DOM
+                    $( ".google-visualization-tooltip" ).remove();
+                }
+            }
+        });
+    }
+    function toggleSubWorkflowRows(dt, selectedRow) {
+        function filterFunction(cell, row, column, table) {
+            var ancestries = table.getRowProperty(row, "ancestry");
+            var ancestryFqn = ancestries.join("/");
+            // Display the row if it's not a sub workflow or if its parent is in the list of workflows to expand.
+            return (ancestries.length == 0 || (expandedParentWorkflows.indexOf(ancestryFqn) != -1));
+        }
+        var filter = {
+            test: filterFunction,
+            // Not used because all filtering is done in filterFunction but it's mandatory to have something else than the filter
+            column: 0
+        };
+        var parentWorkflow;
+        parentWorkflow = chartView.getValue(selectedRow, 0);
+        var indexOfParentWorkflow = expandedParentWorkflows.indexOf(parentWorkflow);
+        if (indexOfParentWorkflow != -1) {
+            // Remove the parent workflow and its children from the list
+            expandedParentWorkflows = expandedParentWorkflows.filter(function (el, i, array) {
+                return !el.startsWith(parentWorkflow)
+            })
+        } else if (parentWorkflow && parentWorkflowNames.indexOf(parentWorkflow) != -1) {
+            // Add it if it's not
+            expandedParentWorkflows.push(parentWorkflow);
+        }
+        var rowsToDisplay = dt.getFilteredRows([filter]);
+        var view = new google.visualization.DataView(dt);
+        view.setRows(rowsToDisplay);
+        return view;
+    }
+    function hideAllSubWorkflows(dt) {
+        var view = new google.visualization.DataView(dt);
+        function filterFunction(cell, row, column, table) {
+            return table.getRowProperty(row, "ancestry").length != 0;
+        }
+        view.hideRows(dt.getFilteredRows([{column: 0, test: filterFunction}]));
+        return view;
+    }
+    $(window).resize(function () {
+        drawChart();
+    });
+    $(document).ready(() => {
+        $('#job-chart-tab').on('shown.bs.tab', function (e) {
+            drawChart();
+        });
+    })
+</script>
+
+{% endblock %}

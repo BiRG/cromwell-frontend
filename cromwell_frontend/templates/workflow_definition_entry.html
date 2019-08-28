@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.48.4/codemirror.min.css" integrity="sha256-vZ3SaLOjnKO/gGvcUWegySoDU6ff33CS5i9ot8J9Czk=" crossorigin="anonymous" />
+<link rel="stylesheet" href="{{ config.CODEMIRROR_THEME_CSS }}">
+{% endblock %}
+{% block content %}
+<form method="post" enctype="multipart/form-data" id="editForm">
+    <div class="form-group">
+        <label for="filenameInput">Path Relative to <code>{{ config.WORKFLOW_DEFINITION_DIR }}</code></label>
+        <input type="text" class="form-control" id="filenameInput" name="relative_path" value="{{ page_data.workflow_definition.relative_filename }}" style="font-family:monospace;">
+    </div>
+    <div class="form-group">
+        <label for="nameInput">Name</label>
+        <input type="text" class="form-control" id="nameInput" name="name" value="{{ page_data.workflow_definition.name }}">
+    </div>
+    <div class="form-group">
+        <label for="descriptionInput">Description</label>
+        <input type="text" class="form-control" id="descriptionInput" name="description" value="{{ page_data.workflow_definition.description }}">
+    </div>
+    <div class="form-group">
+        <label for="definitionTextArea">WDL Definition</label>
+        <textarea class="form-control" id="definitionTextArea" name="definition" form="editForm"></textarea>
+    </div>
+    {% if page_data.workflow_definition.valid %}
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <h6 class="alert-heading">Validation Status: <strong>Success!</strong></h6>
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    {% else %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <h6 class="alert-heading">Validation Status: <strong>Failure</strong></h6>
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+        <hr>
+        <p class="mb-0">
+            <pre>{{ page_data.workflow_definition.errors }}</pre>
+        </p>
+    </div>
+    {% endif %}
+    <button type="submit" disabled style="display: none" aria-hidden="true"></button>
+    <button class="btn btn-primary" type="submit">Save</button>
+    <a class="btn btn-success" href="{{ url_for('workflows.submit_workflow', workflow_definition=page_data.workflow_definition.id) }}">Submit Workflow</a>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<code id="workflowDefinition" style="display: none;">{{ page_data.workflow_definition.file_contents | safe }}</code>
+{{ super() }}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.48.4/codemirror.min.js" integrity="sha256-dPTL2a+npIonoK5i0Tyes0txCMUWZBf8cfKRfACRotc=" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.48.4/addon/mode/simple.js" integrity="sha256-5UrW8bYk5508xYjP4fekJ1+PyaJlTT8snbZwjmIqEjI=" crossorigin="anonymous"></script>
+<script>
+    CodeMirror.defineSimpleMode('wdl', {
+        start: [
+            {regex: /"(?:[^\\]|\\.)*?(?:"|$)/, token: "string"},
+            {regex: /Array|Boolean|File|Float|Int|Map|Object|String|Pair/, token: "type"},
+            {regex: /(workflow|task)(\s+)([a-z$][\w$]*)/, token: ["keyword", null, "variable-2"]},
+            {regex: /(#).*$\n?/, token: "comment"},
+            {regex: /(?:call|runtime|if|then|else|import|as|input|output|meta|parameter_meta|scatter)\b/, token: "keyword"},
+            {regex: /(command)(\s*\{)[\n|\s]*/, token: ["keyword", null], next: "command"},
+            {regex: /true|false/, token: "atom"},
+            {regex: /0x[a-f\d]+|[-+]?(?:\.\d+|\d+\.?\d*)(?:e[-+]?\d+)?/i, token: "number"},
+            {regex: /[-+\/*=<>!]+/, token: "operator"},
+            {regex: /[\{\[\(]/, indent: true},
+            {regex: /[\}\]\)]/, dedent: true}
+        ],
+        command: [
+            {regex: /(.*)(^|\s+)(\})/, token: null, next: "start"},
+            {regex: /\$\{(.*)\}/, token: "variable"},
+            {regex: /\w/, token: "number"}
+        ],
+        meta: {
+            dontIndentStates: ["comment"],
+            lineComment: '#'
+        }
+    });
+    const workflowDefinition = document.getElementById('workflowDefinition').innerHTML;
+    const codeEditor = CodeMirror.fromTextArea(document.getElementById('definitionTextArea'),
+       {
+           mode: "wdl",
+           theme: "{{ config.CODEMIRROR_THEME_NAME }}",
+           lineNumbers: true
+       }
+    );
+    codeEditor.setValue(workflowDefinition);
+</script>
+{% endblock %}

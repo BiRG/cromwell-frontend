@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% macro get_badge(workflow) %}
+<h5>
+{% if (workflow.status is none) or (workflow.status=='Submitted') %}
+<span class="badge badge-pill badge-info">Submitted</span>
+{% elif workflow.status=='Succeeded' %}
+<span class="badge badge-pill badge-success">Succeeded</span>
+{% elif workflow.status=='Failed' %}
+<span class="badge badge-pill badge-danger">Failed</span>
+{% elif workflow.status=='Running' %}
+<span class="badge badge-pill badge-primary">Running</span>
+{% else %}
+<span class="badge badge-pill badge-secondary">{{ workflow.status }}</span>
+{% endif %}
+</h5>
+{% endmacro %}
+
+{% block styles %}
+{{ super() }}
+<link rel=stylesheet href=https://cdn.jsdelivr.net/npm/simple-datatables@2.1/dist/style.css>
+{% endblock %}
+{% block content %}
+{{ super() }}
+<table id="listTable" class="table-striped table-bordered" cellspacing="0" width="auto">
+    <thead>
+    <tr>
+        <th>Workflow ID</th>
+        <th>Status</th>
+        <th>Submitted On</th>
+        <th>Started On</th>
+        <th>Ended On</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for workflow in page_data.workflows %}
+    <tr>
+        <td><a href="{{ url_for('workflows.view_workflow', workflow_id=workflow.id) }}">{{ workflow.id }}</a></td>
+        <td>{{ get_badge(workflow) }}</td>
+        <td data-order="{{ workflow.submission | datetime('timestamp') }}">{{ workflow.submission | datetime }}</td>
+        <td data-order="{{ workflow.start | datetime('timestamp') }}">{{ workflow.start | datetime }}</td>
+        <td data-order="{{ workflow.end | datetime('timestamp') }}">{{ workflow.end | datetime }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
+{% block scripts %}
+{{ super() }}
+<script src=https://cdn.jsdelivr.net/npm/simple-datatables@latest></script>
+<script>
+    const dataTable = new simpleDatatables.DataTable('#listTable');
+    document.querySelector('.page-item').querySelector('a').classList.add('page-link');
+    document.querySelector('.dataTable-pagination').classList.add('pagination');
+    document.querySelector('.dataTable-pagination').classList.add('pagination-sm');
+    document.querySelector('.dataTable-pagination').querySelector('li').classList.add('page-link');
+</script>
+{% endblock %}

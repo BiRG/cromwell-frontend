@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="container">
+      <div class="alert {{ alert_class }}">
+        <h2><i class="fas {{ fa_type }}"></i> {{ error_title }} <i class="fas {{ fa_type }}"></i></h2>
+        <p><strong>Message:</strong> {{ error_msg }}</p>
+	{% if tb is defined %}
+	<p><strong>Traceback:</strong><pre><code>{{ tb }}</code></pre>
+        {% endif %}
+      </div>
+    </div>
+{% endblock %}

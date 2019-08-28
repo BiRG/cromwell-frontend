@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.48.4/codemirror.min.css" integrity="sha256-vZ3SaLOjnKO/gGvcUWegySoDU6ff33CS5i9ot8J9Czk=" crossorigin="anonymous" />
+<link rel="stylesheet" href="{{ config.CODEMIRROR_THEME_CSS }}">
+{% endblock %}
+{% block content %}
+<form method="post" enctype="multipart/form-data" id="editForm">
+  <div class="form-group">
+    <label for="sourceTextArea">Workflow Source (<code>{{ page_data.relative_filename }}</code>)</label>
+    <textarea class="form-control" id="sourceTextArea" name="source" form="editForm"></textarea>
+  </div>
+  <div class="form-group">
+    <label for="optionsTextArea">Workflow Inputs</label>
+    <textarea class="form-control" id="inputsTextArea" name="inputs" form="editForm"></textarea>
+  </div>
+  <div class="form-group">
+    <label for="optionsTextArea">Workflow Options</label>
+    <textarea class="form-control" id="optionsTextArea" name="options" form="editForm"></textarea>
+  </div>
+  <div class="form-group">
+    <label for="labelsTextArea">Workflow Labels</label>
+    <textarea class="form-control" id="labelsTextArea" name="labels" form="editForm"></textarea>
+  </div>
+  <div class="form-group">
+    <label for="dependenciesInput">Dependencies file</label>
+    <input type="file" id="dependenciesInput" value="dependencies" class="form-control">
+  </div>
+  <div class="form-group">
+    <label for="versionSelect">WDL Version</label>
+    <select id="versionSelect" name="workflow_type_version" class="form-control">
+      <option value="1.0">1.0</option>
+      <option value="draft-2">draft-2</option>
+    </select>
+  </div>
+  <div class="form-group">
+    <input type="checkbox" class="form-check-input" id="onHoldCheckbox" name="on_hold">
+    <label class="form-check-label" for="onHoldCheckbox">Submit job as on hold?</label>
+  </div>
+  <button class="btn btn-primary" type="submit">Submit</button>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<code id="workflowSource" style="display: none;">{{ page_data.workflow_source | safe }}</code>
+<code id="workflowInputs" style="display: none;">{{ page_data.inputs | safe }}</code>
+{{ super() }}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.48.4/codemirror.min.js" integrity="sha256-dPTL2a+npIonoK5i0Tyes0txCMUWZBf8cfKRfACRotc=" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.48.4/addon/mode/simple.js" integrity="sha256-5UrW8bYk5508xYjP4fekJ1+PyaJlTT8snbZwjmIqEjI=" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.48.4/mode/yaml/yaml.min.js" integrity="sha256-G1Y7WHjmBIbgQctjcuj64V2zVyIS6EVUj4PaIneJcDc=" crossorigin="anonymous"></script>
+<script>
+    CodeMirror.defineSimpleMode('wdl', {
+        start: [
+            {regex: /"(?:[^\\]|\\.)*?(?:"|$)/, token: "string"},
+            {regex: /Array|Boolean|File|Float|Int|Map|Object|String|Pair/, token: "type"},
+            {regex: /(workflow|task)(\s+)([a-z$][\w$]*)/, token: ["keyword", null, "variable-2"]},
+            {regex: /(#).*$\n?/, token: "comment"},
+            {regex: /(?:call|runtime|if|then|else|import|as|input|output|meta|parameter_meta|scatter)\b/, token: "keyword"},
+            {regex: /(command)(\s*\{)[\n|\s]*/, token: ["keyword", null], next: "command"},
+            {regex: /true|false/, token: "atom"},
+            {regex: /0x[a-f\d]+|[-+]?(?:\.\d+|\d+\.?\d*)(?:e[-+]?\d+)?/i, token: "number"},
+            {regex: /[-+\/*=<>!]+/, token: "operator"},
+            {regex: /[\{\[\(]/, indent: true},
+            {regex: /[\}\]\)]/, dedent: true}
+        ],
+        command: [
+            {regex: /(.*)(^|\s+)(\})/, token: null, next: "start"},
+            {regex: /\$\{(.*)\}/, token: "variable"},
+            {regex: /\w/, token: "number"}
+        ],
+        meta: {
+            dontIndentStates: ["comment"],
+            lineComment: '#'
+        }
+    });
+    const workflowSource = document.getElementById('workflowSource').innerHTML;
+    const workflowInputs = document.getElementById('workflowInputs').innerHTML;
+    const sourceEditor = CodeMirror.fromTextArea(document.getElementById('sourceTextArea'),
+        {
+            mode: "wdl",
+            theme: "{{ config.CODEMIRROR_THEME_NAME }}",
+            lineNumbers: true
+        }
+    );
+    sourceEditor.setValue(workflowSource);
+    const inputsEditor = CodeMirror.fromTextArea(document.getElementById('inputsTextArea'),
+        {
+            mode: "yaml",
+            theme: "{{ config.CODEMIRROR_THEME_NAME }}",
+            lineNumbers: true
+        }
+    );
+    inputsEditor.setValue(workflowInputs);
+    const optionsEditor = CodeMirror.fromTextArea(document.getElementById('optionsTextArea'),
+        {
+            mode: "yaml",
+            theme: "{{ config.CODEMIRROR_THEME_NAME }}",
+            lineNumbers: true
+        }
+    );
+    const labelsEditor = CodeMirror.fromTextArea(document.getElementById('labelsTextArea'),
+        {
+            mode: "yaml",
+            theme: "{{ config.CODEMIRROR_THEME_NAME }}",
+            lineNumbers: true
+        }
+    );
+</script>
+{% endblock %}
