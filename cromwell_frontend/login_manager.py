@@ -39,7 +39,7 @@ def request_loader(req):
         token = auth_header.split(' ')[1]
         # if this is invalid, jwt.decode will throw. So no need to check password
         user_data = jwt.decode(token, config.SECRET, algorithms=['HS256'])
-        return User.query.filter_by(id=user_data['id']).first()
+        return User.query.filter_by(id=user_data['username']).first()
 
 
 def authenticate_user(req):
