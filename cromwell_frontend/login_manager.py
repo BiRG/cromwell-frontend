@@ -45,6 +45,10 @@ def request_loader(req):
 def authenticate_user(req):
     username = req.form.get('username')
     password = req.form.get('password')
+    if username is None and password is None:
+        req_json = req.get_json(force=True)
+        username = req_json['username']
+        password = req_json['password']
     user = User.query.filter_by(username=username).first()
     if user is None:
         try:
